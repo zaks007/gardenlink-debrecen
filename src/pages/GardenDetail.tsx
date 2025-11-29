@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, Leaf, Euro, Users, Calendar, CreditCard } from 'lucide-react';
+import { MapPin, Leaf, Euro, Users, Calendar, CreditCard, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Garden {
@@ -26,6 +26,13 @@ interface Garden {
   size_sqm: number | null;
   amenities: string[] | null;
   images: string[] | null;
+  owner_id: string;
+}
+
+interface Owner {
+  id: string;
+  full_name: string;
+  email: string;
 }
 
 const GardenDetail = () => {
@@ -33,6 +40,7 @@ const GardenDetail = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [garden, setGarden] = useState<Garden | null>(null);
+  const [owner, setOwner] = useState<Owner | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [months, setMonths] = useState([3]);
   const [isBooking, setIsBooking] = useState(false);
@@ -57,6 +65,19 @@ const GardenDetail = () => {
 
       if (error) throw error;
       setGarden(data);
+
+      // Fetch owner info
+      if (data.owner_id) {
+        const { data: ownerData } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .eq('id', data.owner_id)
+          .single();
+        
+        if (ownerData) {
+          setOwner(ownerData);
+        }
+      }
     } catch (error) {
       toast.error('Failed to load garden details');
       navigate('/');
@@ -228,6 +249,31 @@ const GardenDetail = () => {
                 )}
               </CardContent>
             </Card>
+
+            {owner && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Garden Owner</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-lg">{owner.full_name}</p>
+                      <p className="text-sm text-muted-foreground">{owner.email}</p>
+                    </div>
+                    {user && user.id !== owner.id && (
+                      <Button
+                        onClick={() => navigate('/messages')}
+                        variant="outline"
+                      >
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        Message Owner
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Booking Card */}
