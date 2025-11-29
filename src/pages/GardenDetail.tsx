@@ -262,13 +262,22 @@ const GardenDetail = () => {
                       <p className="text-sm text-muted-foreground">{owner.email}</p>
                     </div>
                     {user && user.id !== owner.id && (
-                      <Button
-                        onClick={() => navigate('/messages')}
-                        variant="outline"
-                      >
-                        <MessageCircle className="mr-2 h-4 w-4" />
-                        Message Owner
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => navigate(`/profile/${owner.id}`)}
+                          variant="outline"
+                        >
+                          View Profile
+                        </Button>
+                        <Button
+                          onClick={() => navigate('/messages', { 
+                            state: { recipientId: owner.id, recipientName: owner.full_name } 
+                          })}
+                        >
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Message Owner
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardContent>

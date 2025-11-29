@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
@@ -32,6 +32,7 @@ interface Conversation {
 const Messages = () => {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -48,6 +49,14 @@ const Messages = () => {
   useEffect(() => {
     if (user) {
       fetchConversations();
+      
+      // Check if we're starting a new conversation from navigation state
+      const state = location.state as { recipientId?: string; recipientName?: string };
+      if (state?.recipientId) {
+        setSelectedConversation(state.recipientId);
+        // Clear the state
+        navigate(location.pathname, { replace: true, state: {} });
+      }
     }
   }, [user]);
 

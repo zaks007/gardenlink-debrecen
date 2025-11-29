@@ -5,15 +5,19 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Search, Leaf, Euro, Users } from 'lucide-react';
+import { MapPin, Search, Leaf, Euro, Users, Map } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { toast } from 'sonner';
+import GardenMap from '@/components/GardenMap';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Garden {
   id: string;
   name: string;
   description: string;
   address: string;
+  latitude: number;
+  longitude: number;
   base_price_per_month: number;
   available_plots: number;
   total_plots: number;
@@ -87,8 +91,25 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Gardens Grid */}
+      {/* Gardens Section */}
       <section className="container max-w-7xl mx-auto py-12 px-4">
+        <Tabs defaultValue="grid" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="grid" className="flex items-center gap-2">
+              <Leaf className="h-4 w-4" />
+              Grid View
+            </TabsTrigger>
+            <TabsTrigger value="map" className="flex items-center gap-2">
+              <Map className="h-4 w-4" />
+              Map View
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="map">
+            <GardenMap gardens={filteredGardens} onGardenClick={(id) => navigate(`/garden/${id}`)} />
+          </TabsContent>
+
+          <TabsContent value="grid">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
@@ -166,6 +187,8 @@ const Home = () => {
             ))}
           </div>
         )}
+          </TabsContent>
+        </Tabs>
       </section>
     </div>
   );
