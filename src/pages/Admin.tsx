@@ -38,6 +38,9 @@ const Admin = () => {
     longitude: '',
     base_price_per_month: '',
     total_plots: '',
+    images: '',
+    amenities: '',
+    size_sqm: '',
   });
 
   useEffect(() => {
@@ -73,7 +76,7 @@ const Admin = () => {
     setIsSaving(true);
 
     try {
-      const gardenData = {
+      const gardenData: any = {
         owner_id: user?.id,
         name: formData.name,
         description: formData.description,
@@ -84,6 +87,21 @@ const Admin = () => {
         total_plots: parseInt(formData.total_plots),
         available_plots: parseInt(formData.total_plots),
       };
+
+      // Parse images (comma-separated URLs)
+      if (formData.images.trim()) {
+        gardenData.images = formData.images.split(',').map(url => url.trim()).filter(url => url);
+      }
+
+      // Parse amenities (comma-separated)
+      if (formData.amenities.trim()) {
+        gardenData.amenities = formData.amenities.split(',').map(a => a.trim()).filter(a => a);
+      }
+
+      // Add size if provided
+      if (formData.size_sqm.trim()) {
+        gardenData.size_sqm = parseFloat(formData.size_sqm);
+      }
 
       const { error } = await supabase.from('gardens').insert(gardenData);
 
@@ -99,6 +117,9 @@ const Admin = () => {
         longitude: '',
         base_price_per_month: '',
         total_plots: '',
+        images: '',
+        amenities: '',
+        size_sqm: '',
       });
       fetchMyGardens();
     } catch (error: any) {
@@ -246,6 +267,42 @@ const Admin = () => {
                       required
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="size">Plot Size (m²)</Label>
+                  <Input
+                    id="size"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.size_sqm}
+                    onChange={(e) => setFormData({ ...formData, size_sqm: e.target.value })}
+                    placeholder="e.g., 50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="images">Image URLs</Label>
+                  <Textarea
+                    id="images"
+                    value={formData.images}
+                    onChange={(e) => setFormData({ ...formData, images: e.target.value })}
+                    placeholder="Enter image URLs separated by commas&#10;e.g., https://example.com/image1.jpg, https://example.com/image2.jpg"
+                    rows={3}
+                  />
+                  <p className="text-xs text-muted-foreground">Separate multiple URLs with commas</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="amenities">Amenities</Label>
+                  <Input
+                    id="amenities"
+                    value={formData.amenities}
+                    onChange={(e) => setFormData({ ...formData, amenities: e.target.value })}
+                    placeholder="e.g., Water access, Tool shed, Composting area"
+                  />
+                  <p className="text-xs text-muted-foreground">Separate multiple amenities with commas</p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isSaving}>
