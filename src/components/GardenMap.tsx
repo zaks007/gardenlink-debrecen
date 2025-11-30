@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -27,10 +26,18 @@ interface GardenMapProps {
 }
 
 const GardenMap = ({ gardens, onGardenClick }: GardenMapProps) => {
+  if (gardens.length === 0) {
+    return (
+      <div className="relative w-full h-[500px] rounded-lg overflow-hidden shadow-lg bg-muted flex items-center justify-center">
+        <p className="text-muted-foreground">No gardens to display on map</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-[500px] rounded-lg overflow-hidden shadow-lg">
       <MapContainer
-        center={[47.5316, 21.6273]} // Debrecen coordinates
+        center={[47.5316, 21.6273]}
         zoom={12}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={false}
@@ -39,7 +46,6 @@ const GardenMap = ({ gardens, onGardenClick }: GardenMapProps) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
         {gardens.map((garden) => (
           <Marker
             key={garden.id}

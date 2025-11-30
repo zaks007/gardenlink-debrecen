@@ -105,8 +105,8 @@ const Home = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="map">
-            <GardenMap gardens={filteredGardens} onGardenClick={(id) => navigate(`/garden/${id}`)} />
+          <TabsContent value="map" className="mt-0">
+            {!isLoading && <GardenMap gardens={filteredGardens} onGardenClick={(id) => navigate(`/garden/${id}`)} />}
           </TabsContent>
 
           <TabsContent value="grid">
