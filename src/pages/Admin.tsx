@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, MapPin } from 'lucide-react';
+import { Plus, Trash2, Edit, MapPin, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Garden {
@@ -22,6 +22,9 @@ interface Garden {
   base_price_per_month: number;
   total_plots: number;
   available_plots: number;
+  images?: string[];
+  amenities?: string[];
+  size_sqm?: number;
 }
 
 const Admin = () => {
@@ -30,6 +33,9 @@ const Admin = () => {
   const [gardens, setGardens] = useState<Garden[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingGarden, setEditingGarden] = useState<Garden | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -38,7 +44,6 @@ const Admin = () => {
     longitude: '',
     base_price_per_month: '',
     total_plots: '',
-    images: '',
     amenities: '',
     size_sqm: '',
   });
@@ -71,13 +76,90 @@ const Admin = () => {
     }
   };
 
+  const uploadImages = async (): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    
+    for (const file of imageFiles) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = `${user?.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('garden-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('garden-images')
+        .getPublicUrl(filePath);
+
+      uploadedUrls.push(publicUrl);
+    }
+
+    return uploadedUrls;
+  };
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setImageFiles(prev => [...prev, ...Array.from(files)]);
+    }
+  };
+
+  const removeImageFile = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index: number) => {
+    setExistingImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      address: '',
+      latitude: '',
+      longitude: '',
+      base_price_per_month: '',
+      total_plots: '',
+      amenities: '',
+      size_sqm: '',
+    });
+    setImageFiles([]);
+    setExistingImages([]);
+    setEditingGarden(null);
+  };
+
+  const handleEdit = (garden: Garden) => {
+    setEditingGarden(garden);
+    setFormData({
+      name: garden.name,
+      description: garden.description,
+      address: garden.address,
+      latitude: garden.latitude.toString(),
+      longitude: garden.longitude.toString(),
+      base_price_per_month: garden.base_price_per_month.toString(),
+      total_plots: garden.total_plots.toString(),
+      amenities: garden.amenities?.join(', ') || '',
+      size_sqm: garden.size_sqm?.toString() || '',
+    });
+    setExistingImages(garden.images || []);
+    setImageFiles([]);
+    setIsDialogOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
+      // Upload new images if any
+      const newImageUrls = imageFiles.length > 0 ? await uploadImages() : [];
+      const allImages = [...existingImages, ...newImageUrls];
+
       const gardenData: any = {
-        owner_id: user?.id,
         name: formData.name,
         description: formData.description,
         address: formData.address,
@@ -85,12 +167,12 @@ const Admin = () => {
         longitude: parseFloat(formData.longitude),
         base_price_per_month: parseFloat(formData.base_price_per_month),
         total_plots: parseInt(formData.total_plots),
-        available_plots: parseInt(formData.total_plots),
+        images: allImages.length > 0 ? allImages : null,
       };
 
-      // Parse images (comma-separated URLs)
-      if (formData.images.trim()) {
-        gardenData.images = formData.images.split(',').map(url => url.trim()).filter(url => url);
+      if (!editingGarden) {
+        gardenData.owner_id = user?.id;
+        gardenData.available_plots = parseInt(formData.total_plots);
       }
 
       // Parse amenities (comma-separated)
@@ -103,27 +185,25 @@ const Admin = () => {
         gardenData.size_sqm = parseFloat(formData.size_sqm);
       }
 
-      const { error } = await supabase.from('gardens').insert(gardenData);
+      if (editingGarden) {
+        const { error } = await supabase
+          .from('gardens')
+          .update(gardenData)
+          .eq('id', editingGarden.id);
+        if (error) throw error;
+        toast.success('Garden updated successfully!');
+      } else {
+        const { error } = await supabase.from('gardens').insert(gardenData);
+        if (error) throw error;
+        toast.success('Garden added successfully!');
+      }
 
-      if (error) throw error;
-
-      toast.success('Garden added successfully!');
       setIsDialogOpen(false);
-      setFormData({
-        name: '',
-        description: '',
-        address: '',
-        latitude: '',
-        longitude: '',
-        base_price_per_month: '',
-        total_plots: '',
-        images: '',
-        amenities: '',
-        size_sqm: '',
-      });
+      resetForm();
       fetchMyGardens();
     } catch (error: any) {
-      toast.error('Failed to add garden');
+      toast.error(editingGarden ? 'Failed to update garden' : 'Failed to add garden');
+      console.error(error);
     } finally {
       setIsSaving(false);
     }
@@ -169,7 +249,10 @@ const Admin = () => {
             <p className="text-muted-foreground">Manage your community gardens</p>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger asChild>
               <Button size="lg">
                 <Plus className="mr-2 h-5 w-5" />
@@ -178,9 +261,9 @@ const Admin = () => {
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Garden</DialogTitle>
+                <DialogTitle>{editingGarden ? 'Edit Garden' : 'Add New Garden'}</DialogTitle>
                 <DialogDescription>
-                  Fill in the details for the new community garden
+                  {editingGarden ? 'Update the details for this garden' : 'Fill in the details for the new community garden'}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -283,17 +366,75 @@ const Admin = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="images">Image URLs</Label>
-                  <Textarea
-                    id="images"
-                    value={formData.images}
-                    onChange={(e) => setFormData({ ...formData, images: e.target.value })}
-                    placeholder="Enter DIRECT image URLs separated by commas&#10;e.g., https://images.unsplash.com/photo-123/garden.jpg, https://example.com/image2.jpg"
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    ⚠️ Use direct image URLs only (ending in .jpg, .png, etc.). Right-click an image and select "Copy image address" - don't use Google Images links!
-                  </p>
+                  <Label>Garden Images</Label>
+                  
+                  {/* Existing Images */}
+                  {existingImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {existingImages.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img src={url} alt={`Garden ${index + 1}`} className="w-full h-24 object-cover rounded" />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeExistingImage(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* New Image Files Preview */}
+                  {imageFiles.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                      {imageFiles.map((file, index) => (
+                        <div key={index} className="relative group">
+                          <img 
+                            src={URL.createObjectURL(file)} 
+                            alt={`Upload ${index + 1}`} 
+                            className="w-full h-24 object-cover rounded"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeImageFile(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* File Upload Button */}
+                  <div>
+                    <input
+                      type="file"
+                      id="image-upload"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                      multiple
+                      onChange={handleImageFileChange}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('image-upload')?.click()}
+                      className="w-full"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Images
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click to select images from your device (max 5MB each)
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -308,7 +449,7 @@ const Admin = () => {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isSaving}>
-                  {isSaving ? 'Adding...' : 'Add Garden'}
+                  {isSaving ? (editingGarden ? 'Updating...' : 'Adding...') : (editingGarden ? 'Update Garden' : 'Add Garden')}
                 </Button>
               </form>
             </DialogContent>
@@ -340,14 +481,24 @@ const Admin = () => {
                         {garden.address}
                       </CardDescription>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(garden.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(garden)}
+                        className="text-primary hover:text-primary"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(garden.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
