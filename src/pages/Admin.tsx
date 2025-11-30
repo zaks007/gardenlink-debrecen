@@ -288,10 +288,12 @@ const Admin = () => {
                     id="images"
                     value={formData.images}
                     onChange={(e) => setFormData({ ...formData, images: e.target.value })}
-                    placeholder="Enter image URLs separated by commas&#10;e.g., https://example.com/image1.jpg, https://example.com/image2.jpg"
+                    placeholder="Enter DIRECT image URLs separated by commas&#10;e.g., https://images.unsplash.com/photo-123/garden.jpg, https://example.com/image2.jpg"
                     rows={3}
                   />
-                  <p className="text-xs text-muted-foreground">Separate multiple URLs with commas</p>
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ Use direct image URLs only (ending in .jpg, .png, etc.). Right-click an image and select "Copy image address" - don't use Google Images links!
+                  </p>
                 </div>
 
                 <div className="space-y-2">
