@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, MapPin, Upload, X } from 'lucide-react';
+import { Plus, Trash2, Edit, MapPin, Upload, X, Users } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 
 interface Garden {
@@ -36,6 +37,10 @@ const Admin = () => {
   const [editingGarden, setEditingGarden] = useState<Garden | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [reserversDialogOpen, setReserversDialogOpen] = useState(false);
+  const [selectedGardenReservers, setSelectedGardenReservers] = useState<{name: string; email: string}[]>([]);
+  const [selectedGardenName, setSelectedGardenName] = useState('');
+  const [isLoadingReservers, setIsLoadingReservers] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -224,6 +229,40 @@ const Admin = () => {
     }
   };
 
+  const handleShowReservers = async (garden: Garden) => {
+    setSelectedGardenName(garden.name);
+    setIsLoadingReservers(true);
+    setReserversDialogOpen(true);
+    
+    try {
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('user_id')
+        .eq('garden_id', garden.id)
+        .eq('status', 'confirmed');
+
+      if (error) throw error;
+
+      if (bookings && bookings.length > 0) {
+        const userIds = bookings.map(b => b.user_id);
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .in('id', userIds);
+
+        if (profilesError) throw profilesError;
+        setSelectedGardenReservers(profiles?.map(p => ({ name: p.full_name, email: p.email })) || []);
+      } else {
+        setSelectedGardenReservers([]);
+      }
+    } catch (error) {
+      toast.error('Failed to load reservers');
+      setSelectedGardenReservers([]);
+    } finally {
+      setIsLoadingReservers(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -328,7 +367,7 @@ const Admin = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price">Base Price (€/month) *</Label>
+                    <Label htmlFor="price">Base Price (Ft/month) *</Label>
                     <Input
                       id="price"
                       type="number"
@@ -508,7 +547,7 @@ const Admin = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Price:</span>
-                      <p className="font-semibold">€{garden.base_price_per_month}/mo</p>
+                      <p className="font-semibold">{garden.base_price_per_month} Ft/mo</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Plots:</span>
@@ -517,11 +556,56 @@ const Admin = () => {
                       </p>
                     </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-4"
+                    onClick={() => handleShowReservers(garden)}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Show Reservers
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+
+        {/* Reservers Dialog */}
+        <Dialog open={reserversDialogOpen} onOpenChange={setReserversDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Reservers for {selectedGardenName}</DialogTitle>
+              <DialogDescription>
+                People who have reserved plots in this garden
+              </DialogDescription>
+            </DialogHeader>
+            {isLoadingReservers ? (
+              <div className="py-8 text-center text-muted-foreground">Loading...</div>
+            ) : selectedGardenReservers.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No reservations yet
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedGardenReservers.map((reserver, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{reserver.name}</TableCell>
+                      <TableCell>{reserver.email}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
