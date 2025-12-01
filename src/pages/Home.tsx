@@ -5,11 +5,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Search, Leaf, Euro, Users, Map } from 'lucide-react';
+import { MapPin, Search, Leaf, Euro, Users } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { toast } from 'sonner';
-import GardenMap from '@/components/GardenMap';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Garden {
   id: string;
@@ -93,23 +91,6 @@ const Home = () => {
 
       {/* Gardens Section */}
       <section className="container max-w-7xl mx-auto py-12 px-4">
-        <Tabs defaultValue="grid" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="grid" className="flex items-center gap-2">
-              <Leaf className="h-4 w-4" />
-              Grid View
-            </TabsTrigger>
-            <TabsTrigger value="map" className="flex items-center gap-2">
-              <Map className="h-4 w-4" />
-              Map View
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="map" className="mt-0">
-            {!isLoading && <GardenMap gardens={filteredGardens} onGardenClick={(id) => navigate(`/garden/${id}`)} />}
-          </TabsContent>
-
-          <TabsContent value="grid">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
@@ -135,10 +116,12 @@ const Home = () => {
             {filteredGardens.map((garden) => (
               <Card
                 key={garden.id}
-                className="group hover:shadow-[var(--shadow-medium)] transition-all duration-300 cursor-pointer overflow-hidden"
-                onClick={() => navigate(`/garden/${garden.id}`)}
+                className="group hover:shadow-[var(--shadow-medium)] transition-all duration-300 overflow-hidden"
               >
-                <div className="relative h-48 bg-gradient-to-br from-sage to-forest overflow-hidden">
+                <div 
+                  className="relative h-48 bg-gradient-to-br from-sage to-forest overflow-hidden cursor-pointer"
+                  onClick={() => navigate(`/garden/${garden.id}`)}
+                >
                   {garden.images && garden.images.length > 0 ? (
                     <img
                       src={garden.images[0]}
@@ -155,12 +138,23 @@ const Home = () => {
                   )}
                 </div>
                 <CardHeader>
-                  <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors">
+                  <CardTitle 
+                    className="line-clamp-1 group-hover:text-primary transition-colors cursor-pointer"
+                    onClick={() => navigate(`/garden/${garden.id}`)}
+                  >
                     {garden.name}
                   </CardTitle>
                   <CardDescription className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span className="line-clamp-1">{garden.address}</span>
+                    <MapPin className="h-4 w-4 flex-shrink-0" />
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(garden.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="line-clamp-1 hover:text-primary hover:underline transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {garden.address}
+                    </a>
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -179,7 +173,11 @@ const Home = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full" disabled={garden.available_plots === 0}>
+                  <Button 
+                    className="w-full" 
+                    disabled={garden.available_plots === 0}
+                    onClick={() => navigate(`/garden/${garden.id}`)}
+                  >
                     {garden.available_plots === 0 ? 'Fully Booked' : 'View Details'}
                   </Button>
                 </CardFooter>
@@ -187,8 +185,6 @@ const Home = () => {
             ))}
           </div>
         )}
-          </TabsContent>
-        </Tabs>
       </section>
     </div>
   );

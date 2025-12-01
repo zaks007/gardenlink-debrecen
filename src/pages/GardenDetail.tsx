@@ -218,8 +218,15 @@ const GardenDetail = () => {
             <div>
               <h1 className="text-4xl font-bold mb-4">{garden.name}</h1>
               <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                <MapPin className="h-5 w-5" />
-                <span className="text-lg">{garden.address}</span>
+                <MapPin className="h-5 w-5 flex-shrink-0" />
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(garden.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lg hover:text-primary hover:underline transition-colors"
+                >
+                  {garden.address}
+                </a>
               </div>
             </div>
 
