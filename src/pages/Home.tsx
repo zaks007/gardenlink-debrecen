@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MapPin, Search, Leaf, Euro, Users } from 'lucide-react';
+import { MapPin, Search, Leaf, Users } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { toast } from 'sonner';
 
@@ -166,10 +166,9 @@ const Home = () => {
                       <Users className="h-4 w-4" />
                       <span>{garden.available_plots}/{garden.total_plots} available</span>
                     </div>
-                    <div className="flex items-center gap-1 font-semibold text-primary">
-                      <Euro className="h-4 w-4" />
-                      <span>{garden.base_price_per_month}/mo</span>
-                    </div>
+                    <span className="font-semibold text-primary">
+                      {garden.base_price_per_month} Ft/mo
+                    </span>
                   </div>
                 </CardContent>
                 <CardFooter>

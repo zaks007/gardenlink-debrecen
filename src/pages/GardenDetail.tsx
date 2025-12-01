@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, Leaf, Euro, Users, Calendar, CreditCard, MessageCircle } from 'lucide-react';
+import { MapPin, Leaf, Users, Calendar, CreditCard, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Garden {
@@ -296,9 +296,8 @@ const GardenDetail = () => {
           <div className="lg:col-span-1">
             <Card className="sticky top-24 shadow-[var(--shadow-medium)]">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Euro className="h-5 w-5" />
-                  {garden.base_price_per_month}/month
+                <CardTitle>
+                  {garden.base_price_per_month} Ft/month
                 </CardTitle>
                 <CardDescription className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
@@ -327,7 +326,7 @@ const GardenDetail = () => {
                 <div className="p-4 bg-muted rounded-lg space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Base price</span>
-                    <span>€{garden.base_price_per_month}/mo</span>
+                    <span>{garden.base_price_per_month} Ft/mo</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration</span>
@@ -335,7 +334,7 @@ const GardenDetail = () => {
                   </div>
                   <div className="border-t pt-2 flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span className="text-primary">€{totalPrice}</span>
+                    <span className="text-primary">{totalPrice} Ft</span>
                   </div>
                 </div>
 
@@ -423,7 +422,7 @@ const GardenDetail = () => {
                       <div className="bg-muted p-4 rounded-lg">
                         <div className="flex justify-between font-semibold">
                           <span>Total Amount</span>
-                          <span className="text-primary">€{totalPrice}</span>
+                          <span className="text-primary">{totalPrice} Ft</span>
                         </div>
                       </div>
                       <Button type="submit" className="w-full" disabled={isBooking}>
