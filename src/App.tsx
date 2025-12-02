@@ -8,7 +8,6 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import GardenDetail from "./pages/GardenDetail";
 import Admin from "./pages/Admin";
-import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import NotFound from "./pages/NotFound";
@@ -27,7 +26,6 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/garden/:id" element={<GardenDetail />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path="/messages" element={<Messages />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:id" element={<PublicProfile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

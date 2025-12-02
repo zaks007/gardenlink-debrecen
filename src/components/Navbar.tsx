@@ -35,9 +35,6 @@ const Navbar = () => {
           
           {user ? (
             <>
-              <Link to="/messages" className="text-sm font-medium transition-colors hover:text-primary">
-                Messages
-              </Link>
               {isAdmin && (
                 <Link to="/admin" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
                   <LayoutDashboard className="h-4 w-4" />
