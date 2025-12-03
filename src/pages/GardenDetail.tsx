@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, Leaf, Users, Calendar, CreditCard, MessageCircle } from 'lucide-react';
+import { MapPin, Leaf, Users, Calendar, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Garden {
@@ -266,25 +266,20 @@ const GardenDetail = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-lg">{owner.full_name}</p>
-                      <p className="text-sm text-muted-foreground">{owner.email}</p>
+                      <a 
+                        href={`mailto:${owner.email}`}
+                        className="text-sm text-primary hover:underline"
+                      >
+                        {owner.email}
+                      </a>
                     </div>
                     {user && user.id !== owner.id && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => navigate(`/profile/${owner.id}`)}
-                          variant="outline"
-                        >
-                          View Profile
-                        </Button>
-                        <Button
-                          onClick={() => navigate('/messages', { 
-                            state: { recipientId: owner.id, recipientName: owner.full_name } 
-                          })}
-                        >
-                          <MessageCircle className="mr-2 h-4 w-4" />
-                          Message Owner
-                        </Button>
-                      </div>
+                      <Button
+                        onClick={() => navigate(`/profile/${owner.id}`)}
+                        variant="outline"
+                      >
+                        View Profile
+                      </Button>
                     )}
                   </div>
                 </CardContent>
