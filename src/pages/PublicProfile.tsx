@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Mail, MapPin, Euro, Leaf } from 'lucide-react';
@@ -87,10 +86,6 @@ const PublicProfile = () => {
     }
   };
 
-  const handleMessageOwner = () => {
-    navigate('/messages', { state: { recipientId: id, recipientName: profile?.full_name } });
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -136,14 +131,15 @@ const PublicProfile = () => {
                   <h1 className="text-3xl font-bold">{profile.full_name}</h1>
                   {isAdmin && <Badge>Garden Owner</Badge>}
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground mb-4">
+                <a 
+                  href={`mailto:${profile.email}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-primary hover:underline"
+                >
                   <Mail className="h-4 w-4" />
-                  <span>{profile.email}</span>
-                </div>
-                <Button onClick={handleMessageOwner} className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Send Message
-                </Button>
+                  Contact: {profile.email}
+                </a>
               </div>
             </div>
           </CardContent>
