@@ -10,8 +10,6 @@ import { toast } from 'sonner';
 import { Leaf } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +18,7 @@ const Auth = () => {
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpName, setSignUpName] = useState('');
-  const [signUpRole, setSignUpRole] = useState<'user' | 'admin'>('user');
+  
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -68,15 +66,6 @@ const Auth = () => {
           toast.error(error.message);
         }
       } else if (data.user) {
-        // Add the selected role to user_roles table
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({ user_id: data.user.id, role: signUpRole });
-        
-        if (roleError) {
-          console.error('Failed to assign role:', roleError);
-        }
-        
         toast.success('Account created successfully!');
         navigate('/');
       }
@@ -176,23 +165,6 @@ const Auth = () => {
                       minLength={6}
                       disabled={isLoading}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Account Type</Label>
-                    <RadioGroup value={signUpRole} onValueChange={(value: 'user' | 'admin') => setSignUpRole(value)}>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="user" id="role-user" />
-                        <Label htmlFor="role-user" className="font-normal cursor-pointer">
-                          User - Book garden plots
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="admin" id="role-admin" />
-                        <Label htmlFor="role-admin" className="font-normal cursor-pointer">
-                          Admin - List and manage gardens
-                        </Label>
-                      </div>
-                    </RadioGroup>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Creating account...' : 'Create Account'}
