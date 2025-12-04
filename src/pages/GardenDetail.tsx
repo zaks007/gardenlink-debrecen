@@ -10,6 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { MapPin, Leaf, Users, Calendar, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -193,22 +194,43 @@ const GardenDetail = () => {
       
       <div className="container max-w-6xl mx-auto py-12 px-4">
         {/* Garden Images */}
-        <div className="relative h-96 rounded-xl overflow-hidden mb-8 shadow-[var(--shadow-medium)]">
+        <div className="relative mb-8">
           {garden.images && garden.images.length > 0 ? (
-            <img
-              src={garden.images[0]}
-              alt={garden.name}
-              className="w-full h-full object-cover"
-            />
+            <Carousel className="w-full">
+              <CarouselContent>
+                {garden.images.map((image, index) => (
+                  <CarouselItem key={index}>
+                    <div className="relative h-96 rounded-xl overflow-hidden shadow-[var(--shadow-medium)]">
+                      <img
+                        src={image}
+                        alt={`${garden.name} - Image ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {garden.images.length > 1 && (
+                <>
+                  <CarouselPrevious className="left-4" />
+                  <CarouselNext className="right-4" />
+                </>
+              )}
+            </Carousel>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-sage to-forest flex items-center justify-center">
+            <div className="h-96 rounded-xl overflow-hidden shadow-[var(--shadow-medium)] bg-gradient-to-br from-sage to-forest flex items-center justify-center">
               <Leaf className="h-32 w-32 text-white/30" />
             </div>
           )}
           {garden.available_plots === 0 && (
-            <Badge className="absolute top-4 right-4 bg-destructive text-lg py-2 px-4">
+            <Badge className="absolute top-4 right-4 bg-destructive text-lg py-2 px-4 z-10">
               Fully Booked
             </Badge>
+          )}
+          {garden.images && garden.images.length > 1 && (
+            <div className="text-center mt-2 text-sm text-muted-foreground">
+              {garden.images.length} photos
+            </div>
           )}
         </div>
 
