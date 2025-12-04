@@ -30,12 +30,6 @@ public class Garden {
     @Column(nullable = false)
     private String address;
     
-    @Column(nullable = false)
-    private BigDecimal latitude;
-    
-    @Column(nullable = false)
-    private BigDecimal longitude;
-    
     @Column(name = "total_plots", nullable = false)
     private Integer totalPlots = 1;
     
