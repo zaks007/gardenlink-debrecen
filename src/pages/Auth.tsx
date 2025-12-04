@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { authHelpers } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Leaf } from 'lucide-react';
@@ -18,6 +19,7 @@ const Auth = () => {
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpName, setSignUpName] = useState('');
+  const [signUpRole, setSignUpRole] = useState<'user' | 'admin'>('user');
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -57,7 +59,7 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await authHelpers.signUp(signUpEmail, signUpPassword, signUpName);
+      const { data, error } = await authHelpers.signUp(signUpEmail, signUpPassword, signUpName, signUpRole);
       
       if (error) {
         if (error.message.includes('already registered')) {
@@ -165,6 +167,28 @@ const Auth = () => {
                       minLength={6}
                       disabled={isLoading}
                     />
+                  </div>
+                  <div className="space-y-3">
+                    <Label>I want to</Label>
+                    <RadioGroup
+                      value={signUpRole}
+                      onValueChange={(value) => setSignUpRole(value as 'user' | 'admin')}
+                      className="flex gap-4"
+                      disabled={isLoading}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="user" id="role-user" />
+                        <Label htmlFor="role-user" className="cursor-pointer font-normal">
+                          Rent a garden plot
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="admin" id="role-admin" />
+                        <Label htmlFor="role-admin" className="cursor-pointer font-normal">
+                          List my garden
+                        </Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Creating account...' : 'Create Account'}

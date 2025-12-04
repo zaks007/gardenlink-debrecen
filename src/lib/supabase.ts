@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
 export const authHelpers = {
-  signUp: async (email: string, password: string, fullName: string) => {
+  signUp: async (email: string, password: string, fullName: string, role: 'user' | 'admin' = 'user') => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -15,6 +15,15 @@ export const authHelpers = {
         },
       },
     });
+
+    // If signup successful and role is admin, update the role
+    if (data.user && !error && role === 'admin') {
+      await supabase
+        .from('user_roles')
+        .update({ role: 'admin' })
+        .eq('user_id', data.user.id);
+    }
+
     return { data, error };
   },
 
