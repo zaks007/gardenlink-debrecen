@@ -18,8 +18,6 @@ interface Garden {
   name: string;
   description: string;
   address: string;
-  latitude: number;
-  longitude: number;
   base_price_per_month: number;
   total_plots: number;
   available_plots: number;
@@ -45,8 +43,6 @@ const Admin = () => {
     name: '',
     description: '',
     address: '',
-    latitude: '',
-    longitude: '',
     base_price_per_month: '',
     total_plots: '',
     amenities: '',
@@ -125,8 +121,6 @@ const Admin = () => {
       name: '',
       description: '',
       address: '',
-      latitude: '',
-      longitude: '',
       base_price_per_month: '',
       total_plots: '',
       amenities: '',
@@ -143,8 +137,6 @@ const Admin = () => {
       name: garden.name,
       description: garden.description,
       address: garden.address,
-      latitude: garden.latitude.toString(),
-      longitude: garden.longitude.toString(),
       base_price_per_month: garden.base_price_per_month.toString(),
       total_plots: garden.total_plots.toString(),
       amenities: garden.amenities?.join(', ') || '',
@@ -168,8 +160,6 @@ const Admin = () => {
         name: formData.name,
         description: formData.description,
         address: formData.address,
-        latitude: parseFloat(formData.latitude),
-        longitude: parseFloat(formData.longitude),
         base_price_per_month: parseFloat(formData.base_price_per_month),
         total_plots: parseInt(formData.total_plots),
         images: allImages.length > 0 ? allImages : null,
@@ -336,33 +326,6 @@ const Admin = () => {
                     placeholder="e.g., Nagyerdő, Debrecen"
                     required
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="latitude">Latitude *</Label>
-                    <Input
-                      id="latitude"
-                      type="number"
-                      step="0.000001"
-                      value={formData.latitude}
-                      onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                      placeholder="47.5316"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="longitude">Longitude *</Label>
-                    <Input
-                      id="longitude"
-                      type="number"
-                      step="0.000001"
-                      value={formData.longitude}
-                      onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                      placeholder="21.6273"
-                      required
-                    />
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
