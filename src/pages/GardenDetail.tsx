@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { gardenApi, userApi, bookingApi, type Garden as ApiGarden } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -58,25 +59,36 @@ const GardenDetail = () => {
 
   const fetchGarden = async () => {
     try {
-      const { data, error } = await supabase
-        .from('gardens')
-        .select('*')
-        .eq('id', id)
-        .single();
+      // Fetch garden from Spring Boot backend API
+      const apiGarden = await gardenApi.getById(id!);
+      const mappedGarden: Garden = {
+        id: apiGarden.id,
+        name: apiGarden.name,
+        description: apiGarden.description,
+        address: apiGarden.address,
+        latitude: 0,
+        longitude: 0,
+        base_price_per_month: apiGarden.basePricePerMonth,
+        available_plots: apiGarden.availablePlots,
+        total_plots: apiGarden.totalPlots,
+        size_sqm: apiGarden.sizeSqm,
+        amenities: apiGarden.amenities,
+        images: apiGarden.images,
+        owner_id: apiGarden.ownerId,
+      };
+      setGarden(mappedGarden);
 
-      if (error) throw error;
-      setGarden(data);
-
-      // Fetch owner info
-      if (data.owner_id) {
-        const { data: ownerData } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .eq('id', data.owner_id)
-          .single();
-        
-        if (ownerData) {
-          setOwner(ownerData);
+      // Fetch owner info from Spring Boot backend API
+      if (apiGarden.ownerId) {
+        try {
+          const ownerData = await userApi.getById(apiGarden.ownerId);
+          setOwner({
+            id: ownerData.id,
+            full_name: ownerData.fullName,
+            email: ownerData.email,
+          });
+        } catch (e) {
+          console.warn('Could not fetch owner info');
         }
       }
     } catch (error) {
@@ -136,32 +148,27 @@ const GardenDetail = () => {
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + months[0]);
 
-      const { error } = await supabase
-        .from('bookings')
-        .insert({
-          garden_id: garden?.id,
-          user_id: user.id,
-          start_date: startDate.toISOString().split('T')[0],
-          end_date: endDate.toISOString().split('T')[0],
-          duration_months: months[0],
-          total_price: totalPrice,
-          status: 'confirmed',
-          payment_method: 'credit_card',
-        });
+      // Create booking via Spring Boot backend API
+      await bookingApi.create({
+        gardenId: garden?.id,
+        userId: user.id,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        durationMonths: months[0],
+        totalPrice: totalPrice,
+        status: 'confirmed',
+        paymentMethod: 'credit_card',
+      });
 
-      if (error) {
-        if (error.message.includes('one_booking_per_user_garden')) {
-          toast.error('You already have a booking for this garden');
-        } else {
-          throw error;
-        }
-      } else {
-        toast.success('Booking confirmed! Payment processed successfully.');
-        setIsDialogOpen(false);
-        setTimeout(() => navigate('/'), 1500);
-      }
+      toast.success('Booking confirmed! Payment processed successfully.');
+      setIsDialogOpen(false);
+      setTimeout(() => navigate('/'), 1500);
     } catch (error: any) {
-      toast.error('Failed to create booking');
+      if (error.message?.includes('one_booking_per_user_garden')) {
+        toast.error('You already have a booking for this garden');
+      } else {
+        toast.error('Failed to create booking');
+      }
     } finally {
       setIsBooking(false);
     }

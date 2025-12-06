@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { gardenApi, bookingApi, userApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -64,14 +65,21 @@ const Admin = () => {
 
   const fetchMyGardens = async () => {
     try {
-      const { data, error } = await supabase
-        .from('gardens')
-        .select('*')
-        .eq('owner_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setGardens(data || []);
+      // Fetch gardens from Spring Boot backend API
+      const data = await userApi.getGardens(user?.id || '');
+      const mapped = data.map(g => ({
+        id: g.id,
+        name: g.name,
+        description: g.description,
+        address: g.address,
+        base_price_per_month: g.basePricePerMonth,
+        total_plots: g.totalPlots,
+        available_plots: g.availablePlots,
+        images: g.images || undefined,
+        amenities: g.amenities || undefined,
+        size_sqm: g.sizeSqm || undefined,
+      }));
+      setGardens(mapped);
     } catch (error) {
       toast.error('Failed to load gardens');
     }
@@ -152,44 +160,32 @@ const Admin = () => {
     setIsSaving(true);
 
     try {
-      // Upload new images if any
+      // Upload new images via Supabase Storage (still needed for file storage)
       const newImageUrls = imageFiles.length > 0 ? await uploadImages() : [];
       const allImages = [...existingImages, ...newImageUrls];
 
-      const gardenData: any = {
+      const gardenData = {
         name: formData.name,
         description: formData.description,
         address: formData.address,
-        base_price_per_month: parseFloat(formData.base_price_per_month),
-        total_plots: parseInt(formData.total_plots),
+        basePricePerMonth: parseFloat(formData.base_price_per_month),
+        totalPlots: parseInt(formData.total_plots),
         images: allImages.length > 0 ? allImages : null,
+        ownerId: user?.id,
+        availablePlots: !editingGarden ? parseInt(formData.total_plots) : undefined,
+        amenities: formData.amenities.trim() 
+          ? formData.amenities.split(',').map(a => a.trim()).filter(a => a) 
+          : null,
+        sizeSqm: formData.size_sqm.trim() ? parseFloat(formData.size_sqm) : null,
       };
 
-      if (!editingGarden) {
-        gardenData.owner_id = user?.id;
-        gardenData.available_plots = parseInt(formData.total_plots);
-      }
-
-      // Parse amenities (comma-separated)
-      if (formData.amenities.trim()) {
-        gardenData.amenities = formData.amenities.split(',').map(a => a.trim()).filter(a => a);
-      }
-
-      // Add size if provided
-      if (formData.size_sqm.trim()) {
-        gardenData.size_sqm = parseFloat(formData.size_sqm);
-      }
-
       if (editingGarden) {
-        const { error } = await supabase
-          .from('gardens')
-          .update(gardenData)
-          .eq('id', editingGarden.id);
-        if (error) throw error;
+        // Update via Spring Boot backend API
+        await gardenApi.update(editingGarden.id, gardenData);
         toast.success('Garden updated successfully!');
       } else {
-        const { error } = await supabase.from('gardens').insert(gardenData);
-        if (error) throw error;
+        // Create via Spring Boot backend API
+        await gardenApi.create(gardenData);
         toast.success('Garden added successfully!');
       }
 
@@ -208,10 +204,8 @@ const Admin = () => {
     if (!confirm('Are you sure you want to delete this garden?')) return;
 
     try {
-      const { error } = await supabase.from('gardens').delete().eq('id', gardenId);
-
-      if (error) throw error;
-
+      // Delete via Spring Boot backend API
+      await gardenApi.delete(gardenId);
       toast.success('Garden deleted successfully');
       fetchMyGardens();
     } catch (error) {
@@ -225,23 +219,23 @@ const Admin = () => {
     setReserversDialogOpen(true);
     
     try {
-      const { data: bookings, error } = await supabase
-        .from('bookings')
-        .select('user_id')
-        .eq('garden_id', garden.id)
-        .eq('status', 'confirmed');
+      // Get bookings for this garden from Spring Boot backend API
+      const bookings = await bookingApi.getByGarden(garden.id);
+      const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
 
-      if (error) throw error;
-
-      if (bookings && bookings.length > 0) {
-        const userIds = bookings.map(b => b.user_id);
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .in('id', userIds);
-
-        if (profilesError) throw profilesError;
-        setSelectedGardenReservers(profiles?.map(p => ({ name: p.full_name, email: p.email })) || []);
+      if (confirmedBookings.length > 0) {
+        // Fetch user details for each booking
+        const reservers = await Promise.all(
+          confirmedBookings.map(async (booking) => {
+            try {
+              const user = await userApi.getById(booking.userId);
+              return { name: user.fullName, email: user.email };
+            } catch {
+              return { name: 'Unknown', email: '' };
+            }
+          })
+        );
+        setSelectedGardenReservers(reservers);
       } else {
         setSelectedGardenReservers([]);
       }
