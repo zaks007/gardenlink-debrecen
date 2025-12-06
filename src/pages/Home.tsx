@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { gardenApi, type Garden as ApiGarden } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,6 @@ interface Garden {
   name: string;
   description: string;
   address: string;
-  latitude: number;
-  longitude: number;
   base_price_per_month: number;
   available_plots: number;
   total_plots: number;
@@ -36,15 +34,25 @@ const Home = () => {
 
   const fetchGardens = async () => {
     try {
-      const { data, error } = await supabase
-        .from('gardens')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setGardens(data || []);
+      // Fetch from Spring Boot backend API
+      const data = await gardenApi.getAll();
+      // Map camelCase response to snake_case for component compatibility
+      const mapped = data.map(g => ({
+        id: g.id,
+        name: g.name,
+        description: g.description,
+        address: g.address,
+        base_price_per_month: g.basePricePerMonth,
+        available_plots: g.availablePlots,
+        total_plots: g.totalPlots,
+        size_sqm: g.sizeSqm,
+        amenities: g.amenities,
+        images: g.images,
+      }));
+      setGardens(mapped);
     } catch (error: any) {
       toast.error('Failed to load gardens');
+      console.error('API Error:', error);
     } finally {
       setIsLoading(false);
     }
