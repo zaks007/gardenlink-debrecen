@@ -1,4 +1,6 @@
 // API client for Spring Boot backend
+import { getAuthHeaders } from './auth';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api';
 
 interface Garden {
@@ -32,6 +34,7 @@ interface User {
   email: string;
   fullName: string;
   avatarUrl: string | null;
+  role: string;
 }
 
 // Helper to convert snake_case API response to camelCase
@@ -68,13 +71,15 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...options?.headers,
     },
     ...options,
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
@@ -150,6 +155,45 @@ export const userApi = {
       method: 'PUT',
       body: JSON.stringify(toSnakeCase(user)),
     }),
+};
+
+// File Upload API
+export const uploadApi = {
+  uploadFiles: async (files: File[]): Promise<string[]> => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    
+    const response = await fetch(`${API_BASE_URL}/uploads`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to upload files');
+    }
+    
+    const data = await response.json();
+    return data.urls;
+  },
+  
+  uploadFile: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE_URL}/uploads/single`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to upload file');
+    }
+    
+    const data = await response.json();
+    return data.url;
+  },
 };
 
 export type { Garden, Booking, User };

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { gardenApi, bookingApi, userApi } from '@/lib/api';
+import { gardenApi, bookingApi, userApi, uploadApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
@@ -19,12 +18,12 @@ interface Garden {
   name: string;
   description: string;
   address: string;
-  base_price_per_month: number;
-  total_plots: number;
-  available_plots: number;
+  basePricePerMonth: number;
+  totalPlots: number;
+  availablePlots: number;
   images?: string[];
   amenities?: string[];
-  size_sqm?: number;
+  sizeSqm?: number;
 }
 
 const Admin = () => {
@@ -44,10 +43,10 @@ const Admin = () => {
     name: '',
     description: '',
     address: '',
-    base_price_per_month: '',
-    total_plots: '',
+    basePricePerMonth: '',
+    totalPlots: '',
     amenities: '',
-    size_sqm: '',
+    sizeSqm: '',
   });
 
   useEffect(() => {
@@ -65,48 +64,32 @@ const Admin = () => {
 
   const fetchMyGardens = async () => {
     try {
-      // Fetch gardens from Spring Boot backend API
       const data = await userApi.getGardens(user?.id || '');
-      const mapped = data.map(g => ({
+      setGardens(data.map(g => ({
         id: g.id,
         name: g.name,
         description: g.description,
         address: g.address,
-        base_price_per_month: g.basePricePerMonth,
-        total_plots: g.totalPlots,
-        available_plots: g.availablePlots,
+        basePricePerMonth: g.basePricePerMonth,
+        totalPlots: g.totalPlots,
+        availablePlots: g.availablePlots,
         images: g.images || undefined,
         amenities: g.amenities || undefined,
-        size_sqm: g.sizeSqm || undefined,
-      }));
-      setGardens(mapped);
+        sizeSqm: g.sizeSqm || undefined,
+      })));
     } catch (error) {
       toast.error('Failed to load gardens');
     }
   };
 
   const uploadImages = async (): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
+    if (imageFiles.length === 0) return [];
     
-    for (const file of imageFiles) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-      const filePath = `${user?.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('garden-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('garden-images')
-        .getPublicUrl(filePath);
-
-      uploadedUrls.push(publicUrl);
+    try {
+      return await uploadApi.uploadFiles(imageFiles);
+    } catch (error) {
+      throw new Error('Failed to upload images');
     }
-
-    return uploadedUrls;
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,10 +112,10 @@ const Admin = () => {
       name: '',
       description: '',
       address: '',
-      base_price_per_month: '',
-      total_plots: '',
+      basePricePerMonth: '',
+      totalPlots: '',
       amenities: '',
-      size_sqm: '',
+      sizeSqm: '',
     });
     setImageFiles([]);
     setExistingImages([]);
@@ -145,10 +128,10 @@ const Admin = () => {
       name: garden.name,
       description: garden.description,
       address: garden.address,
-      base_price_per_month: garden.base_price_per_month.toString(),
-      total_plots: garden.total_plots.toString(),
+      basePricePerMonth: garden.basePricePerMonth.toString(),
+      totalPlots: garden.totalPlots.toString(),
       amenities: garden.amenities?.join(', ') || '',
-      size_sqm: garden.size_sqm?.toString() || '',
+      sizeSqm: garden.sizeSqm?.toString() || '',
     });
     setExistingImages(garden.images || []);
     setImageFiles([]);
@@ -160,31 +143,28 @@ const Admin = () => {
     setIsSaving(true);
 
     try {
-      // Upload new images via Supabase Storage (still needed for file storage)
-      const newImageUrls = imageFiles.length > 0 ? await uploadImages() : [];
+      const newImageUrls = await uploadImages();
       const allImages = [...existingImages, ...newImageUrls];
 
       const gardenData = {
         name: formData.name,
         description: formData.description,
         address: formData.address,
-        basePricePerMonth: parseFloat(formData.base_price_per_month),
-        totalPlots: parseInt(formData.total_plots),
+        basePricePerMonth: parseFloat(formData.basePricePerMonth),
+        totalPlots: parseInt(formData.totalPlots),
         images: allImages.length > 0 ? allImages : null,
         ownerId: user?.id,
-        availablePlots: !editingGarden ? parseInt(formData.total_plots) : undefined,
+        availablePlots: !editingGarden ? parseInt(formData.totalPlots) : undefined,
         amenities: formData.amenities.trim() 
           ? formData.amenities.split(',').map(a => a.trim()).filter(a => a) 
           : null,
-        sizeSqm: formData.size_sqm.trim() ? parseFloat(formData.size_sqm) : null,
+        sizeSqm: formData.sizeSqm.trim() ? parseFloat(formData.sizeSqm) : null,
       };
 
       if (editingGarden) {
-        // Update via Spring Boot backend API
         await gardenApi.update(editingGarden.id, gardenData);
         toast.success('Garden updated successfully!');
       } else {
-        // Create via Spring Boot backend API
         await gardenApi.create(gardenData);
         toast.success('Garden added successfully!');
       }
@@ -204,7 +184,6 @@ const Admin = () => {
     if (!confirm('Are you sure you want to delete this garden?')) return;
 
     try {
-      // Delete via Spring Boot backend API
       await gardenApi.delete(gardenId);
       toast.success('Garden deleted successfully');
       fetchMyGardens();
@@ -219,12 +198,10 @@ const Admin = () => {
     setReserversDialogOpen(true);
     
     try {
-      // Get bookings for this garden from Spring Boot backend API
       const bookings = await bookingApi.getByGarden(garden.id);
       const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
 
       if (confirmedBookings.length > 0) {
-        // Fetch user details for each booking
         const reservers = await Promise.all(
           confirmedBookings.map(async (booking) => {
             try {
@@ -330,8 +307,8 @@ const Admin = () => {
                       type="number"
                       step="0.01"
                       min="0"
-                      value={formData.base_price_per_month}
-                      onChange={(e) => setFormData({ ...formData, base_price_per_month: e.target.value })}
+                      value={formData.basePricePerMonth}
+                      onChange={(e) => setFormData({ ...formData, basePricePerMonth: e.target.value })}
                       required
                     />
                   </div>
@@ -341,8 +318,8 @@ const Admin = () => {
                       id="plots"
                       type="number"
                       min="1"
-                      value={formData.total_plots}
-                      onChange={(e) => setFormData({ ...formData, total_plots: e.target.value })}
+                      value={formData.totalPlots}
+                      onChange={(e) => setFormData({ ...formData, totalPlots: e.target.value })}
                       required
                     />
                   </div>
@@ -355,8 +332,8 @@ const Admin = () => {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.size_sqm}
-                    onChange={(e) => setFormData({ ...formData, size_sqm: e.target.value })}
+                    value={formData.sizeSqm}
+                    onChange={(e) => setFormData({ ...formData, sizeSqm: e.target.value })}
                     placeholder="e.g., 50"
                   />
                 </div>
@@ -364,7 +341,6 @@ const Admin = () => {
                 <div className="space-y-2">
                   <Label>Garden Images</Label>
                   
-                  {/* Existing Images */}
                   {existingImages.length > 0 && (
                     <div className="grid grid-cols-3 gap-2 mb-2">
                       {existingImages.map((url, index) => (
@@ -384,7 +360,6 @@ const Admin = () => {
                     </div>
                   )}
 
-                  {/* New Image Files Preview */}
                   {imageFiles.length > 0 && (
                     <div className="grid grid-cols-3 gap-2 mb-2">
                       {imageFiles.map((file, index) => (
@@ -408,7 +383,6 @@ const Admin = () => {
                     </div>
                   )}
 
-                  {/* File Upload Button */}
                   <div>
                     <input
                       type="file"
@@ -428,7 +402,7 @@ const Admin = () => {
                       Upload Images
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Click to select images from your device (max 5MB each)
+                      Click to select images from your device (max 10MB each)
                     </p>
                   </div>
                 </div>
@@ -470,52 +444,33 @@ const Admin = () => {
               <Card key={garden.id} className="hover:shadow-[var(--shadow-medium)] transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="mb-2">{garden.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1">
+                    <div>
+                      <CardTitle className="text-xl">{garden.name}</CardTitle>
+                      <CardDescription className="flex items-center gap-1 mt-1">
                         <MapPin className="h-4 w-4" />
                         {garden.address}
                       </CardDescription>
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(garden)}
-                        className="text-primary hover:text-primary"
-                      >
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="icon" onClick={() => handleEdit(garden)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(garden.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
+                      <Button variant="destructive" size="icon" onClick={() => handleDelete(garden.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {garden.description}
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Price:</span>
-                      <p className="font-semibold">{garden.base_price_per_month} Ft/mo</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Plots:</span>
-                      <p className="font-semibold">
-                        {garden.available_plots}/{garden.total_plots} available
-                      </p>
-                    </div>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{garden.description}</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {garden.availablePlots}/{garden.totalPlots} plots available
+                    </span>
+                    <span className="font-semibold text-primary">{garden.basePricePerMonth} Ft/mo</span>
                   </div>
                   <Button
                     variant="outline"
-                    size="sm"
                     className="w-full mt-4"
                     onClick={() => handleShowReservers(garden)}
                   >
@@ -530,19 +485,17 @@ const Admin = () => {
 
         {/* Reservers Dialog */}
         <Dialog open={reserversDialogOpen} onOpenChange={setReserversDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Reservers for {selectedGardenName}</DialogTitle>
               <DialogDescription>
-                People who have reserved plots in this garden
+                Users who have confirmed bookings for this garden
               </DialogDescription>
             </DialogHeader>
             {isLoadingReservers ? (
               <div className="py-8 text-center text-muted-foreground">Loading...</div>
             ) : selectedGardenReservers.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                No reservations yet
-              </div>
+              <div className="py-8 text-center text-muted-foreground">No reservations yet</div>
             ) : (
               <Table>
                 <TableHeader>
@@ -555,7 +508,11 @@ const Admin = () => {
                   {selectedGardenReservers.map((reserver, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{reserver.name}</TableCell>
-                      <TableCell>{reserver.email}</TableCell>
+                      <TableCell>
+                        <a href={`mailto:${reserver.email}`} className="text-primary hover:underline">
+                          {reserver.email}
+                        </a>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

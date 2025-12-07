@@ -33,8 +33,12 @@ public class UserService {
     
     public Optional<User> updateUser(UUID id, User userDetails) {
         return userRepository.findById(id).map(user -> {
-            user.setFullName(userDetails.getFullName());
-            user.setAvatarUrl(userDetails.getAvatarUrl());
+            if (userDetails.getFullName() != null) {
+                user.setFullName(userDetails.getFullName());
+            }
+            if (userDetails.getAvatarUrl() != null) {
+                user.setAvatarUrl(userDetails.getAvatarUrl());
+            }
             return userRepository.save(user);
         });
     }

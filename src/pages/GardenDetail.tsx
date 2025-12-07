@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { gardenApi, userApi, bookingApi, type Garden as ApiGarden } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
@@ -20,20 +19,18 @@ interface Garden {
   name: string;
   description: string;
   address: string;
-  latitude: number;
-  longitude: number;
-  base_price_per_month: number;
-  available_plots: number;
-  total_plots: number;
-  size_sqm: number | null;
+  basePricePerMonth: number;
+  availablePlots: number;
+  totalPlots: number;
+  sizeSqm: number | null;
   amenities: string[] | null;
   images: string[] | null;
-  owner_id: string;
+  ownerId: string;
 }
 
 interface Owner {
   id: string;
-  full_name: string;
+  fullName: string;
   email: string;
 }
 
@@ -59,32 +56,15 @@ const GardenDetail = () => {
 
   const fetchGarden = async () => {
     try {
-      // Fetch garden from Spring Boot backend API
       const apiGarden = await gardenApi.getById(id!);
-      const mappedGarden: Garden = {
-        id: apiGarden.id,
-        name: apiGarden.name,
-        description: apiGarden.description,
-        address: apiGarden.address,
-        latitude: 0,
-        longitude: 0,
-        base_price_per_month: apiGarden.basePricePerMonth,
-        available_plots: apiGarden.availablePlots,
-        total_plots: apiGarden.totalPlots,
-        size_sqm: apiGarden.sizeSqm,
-        amenities: apiGarden.amenities,
-        images: apiGarden.images,
-        owner_id: apiGarden.ownerId,
-      };
-      setGarden(mappedGarden);
+      setGarden(apiGarden);
 
-      // Fetch owner info from Spring Boot backend API
       if (apiGarden.ownerId) {
         try {
           const ownerData = await userApi.getById(apiGarden.ownerId);
           setOwner({
             id: ownerData.id,
-            full_name: ownerData.fullName,
+            fullName: ownerData.fullName,
             email: ownerData.email,
           });
         } catch (e) {
@@ -99,7 +79,7 @@ const GardenDetail = () => {
     }
   };
 
-  const totalPrice = garden ? garden.base_price_per_month * months[0] : 0;
+  const totalPrice = garden ? garden.basePricePerMonth * months[0] : 0;
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +90,6 @@ const GardenDetail = () => {
       return;
     }
 
-    // Validate card details
     if (cardNumber.replace(/\s/g, '').length !== 16) {
       toast.error('Card number must be 16 digits');
       return;
@@ -148,7 +127,6 @@ const GardenDetail = () => {
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + months[0]);
 
-      // Create booking via Spring Boot backend API
       await bookingApi.create({
         gardenId: garden?.id,
         userId: user.id,
@@ -229,7 +207,7 @@ const GardenDetail = () => {
               <Leaf className="h-32 w-32 text-white/30" />
             </div>
           )}
-          {garden.available_plots === 0 && (
+          {garden.availablePlots === 0 && (
             <Badge className="absolute top-4 right-4 bg-destructive text-lg py-2 px-4 z-10">
               Fully Booked
             </Badge>
@@ -266,10 +244,10 @@ const GardenDetail = () => {
               <CardContent className="space-y-4">
                 <p className="text-muted-foreground leading-relaxed">{garden.description}</p>
                 
-                {garden.size_sqm && (
+                {garden.sizeSqm && (
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">Size:</span>
-                    <span>{garden.size_sqm} m²</span>
+                    <span>{garden.sizeSqm} m²</span>
                   </div>
                 )}
 
@@ -294,7 +272,7 @@ const GardenDetail = () => {
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold text-lg">{owner.full_name}</p>
+                      <p className="font-semibold text-lg">{owner.fullName}</p>
                       <a 
                         href={`mailto:${owner.email}`}
                         className="text-sm text-primary hover:underline"
@@ -321,11 +299,11 @@ const GardenDetail = () => {
             <Card className="sticky top-24 shadow-[var(--shadow-medium)]">
               <CardHeader>
                 <CardTitle>
-                  {garden.base_price_per_month} Ft/month
+                  {garden.basePricePerMonth} Ft/month
                 </CardTitle>
                 <CardDescription className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  {garden.available_plots} of {garden.total_plots} plots available
+                  {garden.availablePlots} of {garden.totalPlots} plots available
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -350,7 +328,7 @@ const GardenDetail = () => {
                 <div className="p-4 bg-muted rounded-lg space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Base price</span>
-                    <span>{garden.base_price_per_month} Ft/mo</span>
+                    <span>{garden.basePricePerMonth} Ft/mo</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Duration</span>
@@ -366,7 +344,7 @@ const GardenDetail = () => {
                   <DialogTrigger asChild>
                     <Button
                       className="w-full h-12 text-lg"
-                      disabled={garden.available_plots === 0}
+                      disabled={garden.availablePlots === 0}
                       onClick={() => {
                         if (!user) {
                           toast.error('Please sign in to make a booking');
@@ -375,7 +353,7 @@ const GardenDetail = () => {
                       }}
                     >
                       <Calendar className="mr-2 h-5 w-5" />
-                      {garden.available_plots === 0 ? 'Fully Booked' : 'Reserve Plot'}
+                      {garden.availablePlots === 0 ? 'Fully Booked' : 'Reserve Plot'}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>

@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { userApi, gardenApi } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Mail, MapPin, Euro, Leaf } from 'lucide-react';
+import { Mail, MapPin, Leaf } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Profile {
   id: string;
-  full_name: string;
+  fullName: string;
   email: string;
-  avatar_url: string | null;
+  avatarUrl: string | null;
+  role: string;
 }
 
 interface Garden {
   id: string;
   name: string;
   address: string;
-  base_price_per_month: number;
-  available_plots: number;
+  basePricePerMonth: number;
+  availablePlots: number;
   images: string[] | null;
 }
 
@@ -29,26 +30,18 @@ const PublicProfile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [gardens, setGardens] = useState<Garden[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (id) {
       fetchProfile();
       fetchGardens();
-      checkIfAdmin();
     }
   }, [id]);
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
+      const data = await userApi.getById(id!);
       setProfile(data);
     } catch (error) {
       toast.error('Failed to load profile');
@@ -59,30 +52,10 @@ const PublicProfile = () => {
 
   const fetchGardens = async () => {
     try {
-      const { data, error } = await supabase
-        .from('gardens')
-        .select('id, name, address, base_price_per_month, available_plots, images')
-        .eq('owner_id', id);
-
-      if (error) throw error;
-      setGardens(data || []);
+      const data = await userApi.getGardens(id!);
+      setGardens(data);
     } catch (error) {
       console.error('Failed to load gardens');
-    }
-  };
-
-  const checkIfAdmin = async () => {
-    try {
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', id)
-        .eq('role', 'admin')
-        .single();
-
-      setIsAdmin(!!data);
-    } catch (error) {
-      // Not an admin
     }
   };
 
@@ -111,6 +84,8 @@ const PublicProfile = () => {
     );
   }
 
+  const isAdmin = profile.role === 'admin' || profile.role === 'ADMIN';
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -122,13 +97,13 @@ const PublicProfile = () => {
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <Avatar className="h-24 w-24">
                 <AvatarFallback className="text-3xl bg-primary text-primary-foreground">
-                  {profile.full_name.charAt(0).toUpperCase()}
+                  {profile.fullName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl font-bold">{profile.full_name}</h1>
+                  <h1 className="text-3xl font-bold">{profile.fullName}</h1>
                   {isAdmin && <Badge>Garden Owner</Badge>}
                 </div>
                 <a 
@@ -149,7 +124,7 @@ const PublicProfile = () => {
         {gardens.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Gardens by {profile.full_name}</CardTitle>
+              <CardTitle>Gardens by {profile.fullName}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -180,11 +155,10 @@ const PublicProfile = () => {
                       </p>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
-                          {garden.available_plots} plots available
+                          {garden.availablePlots} plots available
                         </span>
-                        <span className="font-semibold text-primary flex items-center gap-1">
-                          <Euro className="h-4 w-4" />
-                          {garden.base_price_per_month}/mo
+                        <span className="font-semibold text-primary">
+                          {garden.basePricePerMonth} Ft/mo
                         </span>
                       </div>
                     </CardContent>
