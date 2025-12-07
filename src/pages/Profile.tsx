@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { bookingApi, gardenApi, userApi, type Booking as ApiBooking } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Euro } from 'lucide-react';
+import { Calendar, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Booking {
   id: string;
-  start_date: string;
-  end_date: string;
-  duration_months: number;
-  total_price: number;
+  startDate: string;
+  endDate: string;
+  durationMonths: number;
+  totalPrice: number;
   status: string;
   garden: {
     name: string;
@@ -39,39 +39,52 @@ const Profile = () => {
 
   useEffect(() => {
     if (user) {
-      fetchProfile();
+      setFullName(user.fullName);
       fetchBookings();
     }
   }, [user]);
 
-  const fetchProfile = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user?.id)
-        .single();
-
-      if (error) throw error;
-      if (data) setFullName(data.full_name);
-    } catch (error) {
-      console.error('Failed to load profile');
-    }
-  };
-
   const fetchBookings = async () => {
+    if (!user) return;
+    
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          garden:gardens(name, address)
-        `)
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setBookings(data || []);
+      const bookingsData = await bookingApi.getByUser(user.id);
+      
+      // Fetch garden details for each booking
+      const bookingsWithGardens = await Promise.all(
+        bookingsData.map(async (booking) => {
+          try {
+            const garden = await gardenApi.getById(booking.gardenId);
+            return {
+              id: booking.id,
+              startDate: booking.startDate,
+              endDate: booking.endDate,
+              durationMonths: booking.durationMonths,
+              totalPrice: booking.totalPrice,
+              status: booking.status,
+              garden: {
+                name: garden.name,
+                address: garden.address,
+              },
+            };
+          } catch {
+            return {
+              id: booking.id,
+              startDate: booking.startDate,
+              endDate: booking.endDate,
+              durationMonths: booking.durationMonths,
+              totalPrice: booking.totalPrice,
+              status: booking.status,
+              garden: {
+                name: 'Unknown Garden',
+                address: 'Address unavailable',
+              },
+            };
+          }
+        })
+      );
+      
+      setBookings(bookingsWithGardens);
     } catch (error) {
       toast.error('Failed to load bookings');
     }
@@ -79,16 +92,12 @@ const Profile = () => {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    
     setIsSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: fullName })
-        .eq('id', user?.id);
-
-      if (error) throw error;
-
+      await userApi.update(user.id, { fullName });
       toast.success('Profile updated successfully');
     } catch (error) {
       toast.error('Failed to update profile');
@@ -101,13 +110,7 @@ const Profile = () => {
     if (!confirm('Are you sure you want to cancel this booking?')) return;
 
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled' })
-        .eq('id', bookingId);
-
-      if (error) throw error;
-
+      await bookingApi.cancel(bookingId);
       toast.success('Booking cancelled');
       fetchBookings();
     } catch (error) {
@@ -157,7 +160,7 @@ const Profile = () => {
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
-                      value={user?.email}
+                      value={user?.email || ''}
                       disabled
                       className="bg-muted"
                     />
@@ -222,25 +225,24 @@ const Profile = () => {
                           <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                             <div>
                               <span className="text-muted-foreground">Duration:</span>
-                              <p className="font-semibold">{booking.duration_months} months</p>
+                              <p className="font-semibold">{booking.durationMonths} months</p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Total:</span>
-                              <p className="font-semibold flex items-center gap-1">
-                                <Euro className="h-3 w-3" />
-                                {booking.total_price}
+                              <p className="font-semibold">
+                                {booking.totalPrice} Ft
                               </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Start:</span>
                               <p className="font-semibold">
-                                {new Date(booking.start_date).toLocaleDateString()}
+                                {new Date(booking.startDate).toLocaleDateString()}
                               </p>
                             </div>
                             <div>
                               <span className="text-muted-foreground">End:</span>
                               <p className="font-semibold">
-                                {new Date(booking.end_date).toLocaleDateString()}
+                                {new Date(booking.endDate).toLocaleDateString()}
                               </p>
                             </div>
                           </div>

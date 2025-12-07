@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,11 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { authHelpers } from '@/lib/supabase';
+import { authApi } from '@/lib/auth';
 import { toast } from 'sonner';
 import { Leaf } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +21,7 @@ const Auth = () => {
   const [signUpRole, setSignUpRole] = useState<'user' | 'admin'>('user');
   
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   useEffect(() => {
     if (user) {
@@ -35,20 +34,12 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await authHelpers.signIn(signInEmail, signInPassword);
-      
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          toast.error('Invalid email or password');
-        } else {
-          toast.error(error.message);
-        }
-      } else {
-        toast.success('Welcome back!');
-        navigate('/');
-      }
-    } catch (error) {
-      toast.error('An unexpected error occurred');
+      await authApi.login(signInEmail, signInPassword);
+      await refreshUser();
+      toast.success('Welcome back!');
+      navigate('/');
+    } catch (error: any) {
+      toast.error(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
@@ -59,20 +50,12 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await authHelpers.signUp(signUpEmail, signUpPassword, signUpName, signUpRole);
-      
-      if (error) {
-        if (error.message.includes('already registered')) {
-          toast.error('This email is already registered');
-        } else {
-          toast.error(error.message);
-        }
-      } else if (data.user) {
-        toast.success('Account created successfully!');
-        navigate('/');
-      }
-    } catch (error) {
-      toast.error('An unexpected error occurred');
+      await authApi.register(signUpEmail, signUpPassword, signUpName, signUpRole);
+      await refreshUser();
+      toast.success('Account created successfully!');
+      navigate('/');
+    } catch (error: any) {
+      toast.error(error.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }

@@ -1,71 +1,75 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { User, Session } from '@supabase/supabase-js';
-import { authHelpers, getUserRoles } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { authApi, getStoredUser, getToken, type User } from '@/lib/auth';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
-  signOut: () => Promise<void>;
+  signOut: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
+  const refreshUser = async () => {
+    try {
+      const response = await authApi.getCurrentUser();
+      if (response) {
+        setUser(response.user);
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = authHelpers.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      // Check admin status when user changes
-      if (session?.user) {
-        setTimeout(() => {
-          getUserRoles(session.user.id).then(({ roles }) => {
-            setIsAdmin(roles.includes('admin'));
-          });
-        }, 0);
-      } else {
-        setIsAdmin(false);
+    const initAuth = async () => {
+      const token = getToken();
+      if (token) {
+        // Try to get current user from API
+        try {
+          const response = await authApi.getCurrentUser();
+          if (response) {
+            setUser(response.user);
+          } else {
+            // Token invalid, try stored user as fallback
+            const storedUser = getStoredUser();
+            if (storedUser) {
+              setUser(storedUser);
+            }
+          }
+        } catch {
+          // API unreachable, use stored user
+          const storedUser = getStoredUser();
+          if (storedUser) {
+            setUser(storedUser);
+          }
+        }
       }
-    });
+      setIsLoading(false);
+    };
 
-    // THEN check for existing session
-    authHelpers.getCurrentUser().then(({ user, session }) => {
-      setSession(session);
-      setUser(user);
-      
-      if (user) {
-        getUserRoles(user.id).then(({ roles }) => {
-          setIsAdmin(roles.includes('admin'));
-          setIsLoading(false);
-        });
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    initAuth();
   }, []);
 
-  const signOut = async () => {
-    await authHelpers.signOut();
+  const signOut = () => {
+    authApi.logout();
     setUser(null);
-    setSession(null);
-    setIsAdmin(false);
     navigate('/auth');
   };
 
+  const isAdmin = user?.role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, isAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, isAdmin, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
